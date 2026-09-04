@@ -1,11 +1,8 @@
 import { Router } from "express";
+import { getStatus } from "../controllers/index.controller.js";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  res.json({
-    message: "Vision Assist AI Backend is running"
-  });
-});
+router.get("/", getStatus);
 
 export default router;
