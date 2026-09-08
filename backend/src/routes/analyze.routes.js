@@ -1,11 +1,8 @@
 import { Router } from "express";
+import { analyze } from "../controllers/analyze.controller.js";
 
 const router = Router();
 
-router.post("/", (req, res) => {
-  res.json({
-    message: "Analyze route working"
-  });
-});
+router.post("/", analyze);
 
 export default router;

@@ -1,11 +1,8 @@
 import { Router } from "express";
+import { ask } from "../controllers/ask.controller.js";
 
 const router = Router();
 
-router.post("/", (req, res) => {
-  res.json({
-    message: "Ask route working"
-  });
-});
+router.post("/", ask);
 
 export default router;
