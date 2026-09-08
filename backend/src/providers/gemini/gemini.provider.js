@@ -4,13 +4,22 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-export const analyzeWithGemini = async ({ image, mode }) => {
+export const analyzeWithGemini = async ({
+  image,
+  mode,
+  question,
+  context
+}) => {
   const prompt = `
 Você é o Vision Assist AI, um assistente de acessibilidade para estudantes com deficiência visual.
 
 Modo atual: ${mode}
 
-Analise a imagem e forneça apenas as informações mais relevantes para o usuário nesse contexto.
+${question ? `Pergunta do usuário: ${question}` : ""}
+
+${context ? `Contexto anterior da análise: ${context}` : ""}
+
+Analise a imagem considerando o modo atual e responda ao usuário.
 
 Regras:
 - Não invente informações.
