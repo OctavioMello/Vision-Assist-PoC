@@ -16,7 +16,7 @@ export const ask = async (req, res) => {
       });
     }
 
-    const result = await askQuestion({
+    const { result, audio } = await askQuestion({
       image,
       mode: mode || "campus",
       question,
@@ -24,7 +24,8 @@ export const ask = async (req, res) => {
     });
 
     res.json({
-      result
+      result,
+      audio
     });
   } catch (error) {
     console.error(error);

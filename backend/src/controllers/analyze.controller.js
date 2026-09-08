@@ -10,13 +10,14 @@ export const analyze = async (req, res) => {
       });
     }
 
-    const result = await analyzeImage({
+    const { result, audio } = await analyzeImage({
       image,
       mode: mode || "campus"
     });
 
     res.json({
-      result
+      result,
+      audio
     });
   } catch (error) {
     console.error(error);
