@@ -5,6 +5,7 @@ import { STATES, MODES } from "./appState";
 function App() {
   const [systemState, setSystemState] = useState(STATES.LISTENING);
   const [mode, setMode] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState("");
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -96,6 +97,8 @@ function App() {
 
       console.log("Resposta do backend:", data);
 
+      setAnalysisResult(data.result);
+
       return data;
     } catch (error) {
       console.error("Erro ao analisar imagem:", error);
@@ -146,14 +149,6 @@ function App() {
     }
   };
 
-  useEffect(() => {
-  window.testAnalyze = () => captureImage(MODES.CAMPUS);
-
-  return () => {
-    delete window.testAnalyze;
-  };
-});
-
   return (
     <main className="app">
       <section className="camera-screen">
@@ -164,6 +159,12 @@ function App() {
           playsInline
           muted
         />
+
+        {analysisResult && (
+  <div className="analysis-result">
+    {analysisResult}
+  </div>
+)}
 
         <canvas
           ref={canvasRef}
