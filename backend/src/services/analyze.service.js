@@ -7,7 +7,13 @@ export const analyzeImage = async ({ image, mode }) => {
     mode
   });
 
-  const audio = await synthesizeSpeech(result);
+  let audio = null;
+
+  try {
+    audio = await synthesizeSpeech(result);
+  } catch (error) {
+    console.error("Erro ao gerar áudio:", error);
+  }
 
   return {
     result,
