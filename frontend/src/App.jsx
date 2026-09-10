@@ -452,7 +452,12 @@ function App() {
   };
 
   const selectMode = (selectedMode) => {
+    modeRef.current = selectedMode;
+
     setMode(selectedMode);
+    setAnalysisResult("");
+    analysisResultRef.current = "";
+    analysisImageRef.current = null;
     setSystemState(STATES.READY);
   };
 
@@ -544,6 +549,7 @@ function App() {
     }
 
     if (normalizedCommand.includes("trocar para sala")) {
+      modeRef.current = MODES.CLASSROOM;
       setMode(MODES.CLASSROOM);
       setSystemState(STATES.READY);
       playFeedbackSound("success");
@@ -551,9 +557,11 @@ function App() {
     }
 
     if (normalizedCommand.includes("trocar para ambiente")) {
+      modeRef.current = MODES.CAMPUS;
       setMode(MODES.CAMPUS);
       setSystemState(STATES.READY);
       playFeedbackSound("success");
+      return;
     }
 
     if (analysisImageRef.current) {

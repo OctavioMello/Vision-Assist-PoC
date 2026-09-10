@@ -6,13 +6,19 @@ export const askQuestion = async ({ image, mode, question, context }) => {
     image,
     mode,
     question,
-    context
+    context,
   });
 
-  const audio = await synthesizeSpeech(result);
+  let audio = null;
+
+  try {
+    audio = await synthesizeSpeech(result);
+  } catch (error) {
+    console.error("Erro ao gerar áudio:", error);
+  }
 
   return {
     result,
-    audio
+    audio,
   };
 };
