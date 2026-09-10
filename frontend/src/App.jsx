@@ -431,8 +431,9 @@ function App() {
       if (data.audio) {
         setSystemState(STATES.SPEAKING);
         await playAudio(data.audio);
-        setSystemState(STATES.LISTENING);
       }
+
+      setSystemState(STATES.LISTENING);
 
       return data;
     } catch (error) {
