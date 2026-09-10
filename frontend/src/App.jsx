@@ -23,6 +23,12 @@ function App() {
   const analyserRef = useRef(null);
   const silenceTimeoutRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const analysisImageRef = useRef(null);
+  const analysisResultRef = useRef("");
+
+  useEffect(() => {
+    analysisResultRef.current = analysisResult;
+  }, [analysisResult]);
 
   const finishRecording = (mediaRecorder) => {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
@@ -396,6 +402,8 @@ function App() {
       mimeType: "image/jpeg",
     };
 
+    analysisImageRef.current = image;
+
     console.log("Imagem capturada.");
 
     setSystemState(STATES.PROCESSING);
@@ -448,6 +456,60 @@ function App() {
     setSystemState(STATES.READY);
   };
 
+  const askQuestion = async (question) => {
+    const image = analysisImageRef.current;
+
+    if (!image) {
+      console.log("Nenhuma imagem disponível para pergunta.");
+      return;
+    }
+
+    setSystemState(STATES.PROCESSING);
+
+    try {
+      console.log("Enviando pergunta para o backend...");
+      console.log("Pergunta:", question);
+
+      const response = await fetch("http://localhost:3000/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image,
+          mode: modeRef.current.toLowerCase(),
+          question,
+          context: analysisResultRef.current,
+        }),
+      });
+
+      console.log("Resposta HTTP recebida:", response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+
+        throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log("Resposta da pergunta:", data);
+
+      if (data.audio) {
+        setSystemState(STATES.SPEAKING);
+        await playAudio(data.audio);
+      }
+
+      setSystemState(STATES.LISTENING);
+
+      return data;
+    } catch (error) {
+      console.error("Erro ao fazer pergunta:", error);
+      playFeedbackSound("error");
+      setSystemState(STATES.READY);
+    }
+  };
+
   const processCommand = async (command) => {
     const normalizedCommand = command.toLowerCase().trim();
 
@@ -492,6 +554,11 @@ function App() {
       setMode(MODES.CAMPUS);
       setSystemState(STATES.READY);
       playFeedbackSound("success");
+    }
+
+    if (analysisImageRef.current) {
+      console.log("Executando: pergunta contextual");
+      return askQuestion(normalizedCommand);
     }
   };
 
