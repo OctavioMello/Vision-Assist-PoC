@@ -466,6 +466,8 @@ function App() {
 
     if (!image) {
       console.log("Nenhuma imagem disponível para pergunta.");
+      playFeedbackSound("error");
+      setSystemState(STATES.READY);
       return;
     }
 
@@ -549,17 +551,13 @@ function App() {
     }
 
     if (normalizedCommand.includes("trocar para sala")) {
-      modeRef.current = MODES.CLASSROOM;
-      setMode(MODES.CLASSROOM);
-      setSystemState(STATES.READY);
+      selectMode(MODES.CLASSROOM);
       playFeedbackSound("success");
       return;
     }
 
     if (normalizedCommand.includes("trocar para ambiente")) {
-      modeRef.current = MODES.CAMPUS;
-      setMode(MODES.CAMPUS);
-      setSystemState(STATES.READY);
+      selectMode(MODES.CAMPUS);
       playFeedbackSound("success");
       return;
     }
