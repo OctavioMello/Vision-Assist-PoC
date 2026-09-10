@@ -22,12 +22,18 @@ export const transcribe = async (req, res) => {
       text
     });
   } catch (error) {
-    console.error(error);
+  console.error(error);
 
-    res.status(500).json({
-      error: "Error transcribing audio"
+  if (error?.status === 429) {
+    return res.status(429).json({
+      error: "Speech transcription quota exceeded"
     });
   }
+
+  res.status(500).json({
+    error: "Error transcribing audio"
+  });
+}
 };
 
 export const speak = async (req, res) => {

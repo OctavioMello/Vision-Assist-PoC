@@ -7,6 +7,12 @@ function App() {
   const [mode, setMode] = useState(null);
   const [analysisResult, setAnalysisResult] = useState("");
 
+  const modeRef = useRef(null);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -69,11 +75,12 @@ function App() {
               }),
             },
           );
-
           console.log("Resposta HTTP recebida:", response.status);
 
           if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
+            const errorData = await response.json();
+
+            throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
           }
 
           const data = await response.json();
@@ -88,6 +95,14 @@ function App() {
           }
         } catch (error) {
           console.error("Erro ao enviar áudio:", error);
+
+          if (error.message === "Speech transcription quota exceeded") {
+            console.error("Quota de transcrição excedida.");
+            playFeedbackSound("error");
+            setSystemState(STATES.READY);
+            return;
+          }
+
           playFeedbackSound("error");
           setSystemState(STATES.READY);
         }
@@ -353,7 +368,7 @@ function App() {
     finishRecording(mediaRecorder);
   };
 
-  const captureImage = async (selectedMode = mode) => {
+  const captureImage = async (selectedMode = modeRef.current) => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
@@ -435,14 +450,18 @@ function App() {
   const processCommand = async (command) => {
     const normalizedCommand = command.toLowerCase().trim();
 
-    if (!mode) {
+    console.log("Comando recebido:", normalizedCommand);
+
+    if (!modeRef.current) {
       if (normalizedCommand.includes("ambiente")) {
+        console.log("Executando: ambiente");
         selectMode(MODES.CAMPUS);
         playFeedbackSound("success");
         return;
       }
 
       if (normalizedCommand.includes("sala")) {
+        console.log("Executando: sala");
         selectMode(MODES.CLASSROOM);
         playFeedbackSound("success");
         return;
@@ -452,13 +471,13 @@ function App() {
     }
 
     if (normalizedCommand.includes("analisar")) {
+      console.log("Executando: analisar");
       return captureImage();
     }
 
     if (normalizedCommand.includes("nova análise")) {
-      setSystemState(STATES.READY);
-      playFeedbackSound("success");
-      return;
+      console.log("Executando: nova análise");
+      return captureImage();
     }
 
     if (normalizedCommand.includes("trocar para sala")) {
