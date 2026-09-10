@@ -18,174 +18,276 @@ function App() {
   const silenceTimeoutRef = useRef(null);
   const animationFrameRef = useRef(null);
 
-const finishRecording = (mediaRecorder) => {
-  if (!mediaRecorder || mediaRecorder.state === "inactive") {
-    return;
-  }
-
-  if (animationFrameRef.current) {
-    cancelAnimationFrame(animationFrameRef.current);
-    animationFrameRef.current = null;
-  }
-
-  if (audioContextRef.current) {
-    audioContextRef.current.close();
-    audioContextRef.current = null;
-  }
-
-  analyserRef.current = null;
-
-  mediaRecorder.onstop = async () => {
-    const audioBlob = new Blob(audioChunksRef.current, {
-      type: mediaRecorder.mimeType,
-    });
-
-    console.log("Gravação finalizada.");
-    console.log("Formato:", audioBlob.type);
-    console.log("Tamanho:", audioBlob.size);
-
-    setSystemState(STATES.PROCESSING);
-
-    const reader = new FileReader();
-
-    reader.onloadend = async () => {
-      const base64Audio = reader.result.split(",")[1];
-
-      try {
-        console.log("Enviando áudio para o backend...");
-
-        const response = await fetch(
-          "http://localhost:3000/speech/transcribe",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              audio: base64Audio,
-              mimeType: audioBlob.type,
-            }),
-          }
-        );
-
-        console.log("Resposta HTTP recebida:", response.status);
-
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        console.log("Transcrição:", data.text);
-
-        await processCommand(data.text);
-        startListening();
-          } catch (error) {
-            console.error("Erro ao enviar áudio:", error);
-          }
-        };
-
-    reader.readAsDataURL(audioBlob);
-
-    mediaRecorder.stream
-      .getTracks()
-      .forEach((track) => track.stop());
-  };
-
-  mediaRecorder.stop();
-  mediaRecorderRef.current = null;
-};
-
-const startListening = async () => {
-  try {
-    if (mediaRecorderRef.current) {
+  const finishRecording = (mediaRecorder) => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
       return;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
 
-    const mediaRecorder = new MediaRecorder(stream);
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
 
-    audioChunksRef.current = [];
+    analyserRef.current = null;
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunksRef.current.push(event.data);
-      }
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, {
+        type: mediaRecorder.mimeType,
+      });
+
+      console.log("Gravação finalizada.");
+      console.log("Formato:", audioBlob.type);
+      console.log("Tamanho:", audioBlob.size);
+
+      setSystemState(STATES.PROCESSING);
+
+      startProcessingFeedback();
+
+      const reader = new FileReader();
+
+      reader.onloadend = async () => {
+        const base64Audio = reader.result.split(",")[1];
+
+        try {
+          console.log("Enviando áudio para o backend...");
+
+          const response = await fetch(
+            "http://localhost:3000/speech/transcribe",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                audio: base64Audio,
+                mimeType: audioBlob.type,
+              }),
+            },
+          );
+
+          console.log("Resposta HTTP recebida:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          console.log("Transcrição:", data.text);
+
+          await processCommand(data.text);
+          stopProcessingFeedback();
+          startListening();
+        } catch (error) {
+          console.error("Erro ao enviar áudio:", error);
+        }
+      };
+
+      reader.readAsDataURL(audioBlob);
+
+      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
     };
 
-    mediaRecorderRef.current = mediaRecorder;
+    mediaRecorder.stop();
+    mediaRecorderRef.current = null;
+  };
 
-    const audioContext = new AudioContext();
-    const analyser = audioContext.createAnalyser();
-    const microphone = audioContext.createMediaStreamSource(stream);
-
-    analyser.fftSize = 512;
-
-    microphone.connect(analyser);
-
-    audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
-
-    mediaRecorder.start();
-
-    setSystemState(STATES.LISTENING);
-
-    console.log("Microfone ouvindo...");
-
-    const data = new Uint8Array(analyser.fftSize);
-
-    let silenceStartedAt = null;
-    let hasSpoken = false;
-
-    const detectSilence = () => {
-      if (!mediaRecorderRef.current) {
+  const startListening = async () => {
+    try {
+      if (mediaRecorderRef.current) {
         return;
       }
 
-      analyser.getByteTimeDomainData(data);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
 
-      let sum = 0;
+      const mediaRecorder = new MediaRecorder(stream);
 
-      for (let i = 0; i < data.length; i++) {
-        const normalized = (data[i] - 128) / 128;
-        sum += normalized * normalized;
-      }
+      audioChunksRef.current = [];
 
-      const volume = Math.sqrt(sum / data.length);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
-      const silenceThreshold = 0.015;
-      const silenceDuration = 1200;
+      mediaRecorderRef.current = mediaRecorder;
 
-if (volume >= silenceThreshold) {
-  hasSpoken = true;
-  silenceStartedAt = null;
-} else if (hasSpoken) {
-  if (!silenceStartedAt) {
-    silenceStartedAt = Date.now();
-  }
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
 
-  if (Date.now() - silenceStartedAt >= silenceDuration) {
-    console.log("Silêncio detectado. Parando gravação...");
+      analyser.fftSize = 512;
 
-    finishRecording(mediaRecorder);
-    return;
-  }
-}
+      microphone.connect(analyser);
 
-      animationFrameRef.current =
-        requestAnimationFrame(detectSilence);
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      mediaRecorder.start();
+
+      setSystemState(STATES.LISTENING);
+
+      playFeedbackSound("listening");
+
+      console.log("Microfone ouvindo...");
+
+      const data = new Uint8Array(analyser.fftSize);
+
+      let silenceStartedAt = null;
+      let hasSpoken = false;
+
+      const detectSilence = () => {
+        if (!mediaRecorderRef.current) {
+          return;
+        }
+
+        analyser.getByteTimeDomainData(data);
+
+        let sum = 0;
+
+        for (let i = 0; i < data.length; i++) {
+          const normalized = (data[i] - 128) / 128;
+          sum += normalized * normalized;
+        }
+
+        const volume = Math.sqrt(sum / data.length);
+
+        const silenceThreshold = 0.015;
+        const silenceDuration = 1200;
+
+        if (volume >= silenceThreshold) {
+          hasSpoken = true;
+          silenceStartedAt = null;
+        } else if (hasSpoken) {
+          if (!silenceStartedAt) {
+            silenceStartedAt = Date.now();
+          }
+
+          if (Date.now() - silenceStartedAt >= silenceDuration) {
+            console.log("Silêncio detectado. Parando gravação...");
+
+            finishRecording(mediaRecorder);
+            return;
+          }
+        }
+
+        animationFrameRef.current = requestAnimationFrame(detectSilence);
+      };
+
+      animationFrameRef.current = requestAnimationFrame(detectSilence);
+    } catch (error) {
+      console.error("Erro ao acessar o microfone:", error);
+    }
+  };
+
+  const playFeedbackSound = (type) => {
+    const audioContext = new AudioContext();
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    const sounds = {
+      listening: {
+        frequency: 880,
+        duration: 0.12,
+        volume: 0.08,
+      },
+      processing: {
+        frequency: 520,
+        duration: 0.1,
+        volume: 0.05,
+      },
+      success: {
+        frequency: 1046,
+        duration: 0.15,
+        volume: 0.07,
+        secondFrequency: 1318,
+        gap: 0.06,
+      },
+      error: {
+        frequency: 220,
+        duration: 0.2,
+        volume: 0.07,
+      },
     };
 
-    animationFrameRef.current =
-      requestAnimationFrame(detectSilence);
+    const sound = sounds[type];
 
-  } catch (error) {
-    console.error("Erro ao acessar o microfone:", error);
-  }
-};
+    if (!sound) {
+      audioContext.close();
+      return;
+    }
+
+oscillator.frequency.value = sound.frequency;
+gainNode.gain.value = sound.volume;
+
+oscillator.start();
+oscillator.stop(
+  audioContext.currentTime + sound.duration
+);
+
+if (sound.secondFrequency) {
+  const secondOscillator = audioContext.createOscillator();
+  const secondGainNode = audioContext.createGain();
+
+  secondOscillator.connect(secondGainNode);
+  secondGainNode.connect(audioContext.destination);
+
+  secondOscillator.frequency.value = sound.secondFrequency;
+  secondGainNode.gain.value = sound.volume;
+
+  const secondStart =
+    audioContext.currentTime +
+    sound.duration +
+    sound.gap;
+
+  secondOscillator.start(secondStart);
+  secondOscillator.stop(
+    secondStart + sound.duration
+  );
+
+  secondOscillator.onended = () => {
+    audioContext.close();
+  };
+} else {
+  oscillator.onended = () => {
+    audioContext.close();
+  };
+}
+  };
+
+  const processingIntervalRef = useRef(null);
+
+  const startProcessingFeedback = () => {
+    if (processingIntervalRef.current) {
+      return;
+    }
+
+    playFeedbackSound("processing");
+
+    processingIntervalRef.current = setInterval(() => {
+      playFeedbackSound("processing");
+    }, 2500);
+  };
+
+  const stopProcessingFeedback = () => {
+    if (!processingIntervalRef.current) {
+      return;
+    }
+
+    clearInterval(processingIntervalRef.current);
+    processingIntervalRef.current = null;
+  };
 
   useEffect(() => {
     let stream;
@@ -213,42 +315,40 @@ if (volume >= silenceThreshold) {
     };
   }, []);
 
-const playAudio = (base64Audio) => {
-  if (!base64Audio) {
-    console.log("Áudio indisponível.");
-    return Promise.resolve();
-  }
+  const playAudio = (base64Audio) => {
+    if (!base64Audio) {
+      console.log("Áudio indisponível.");
+      return Promise.resolve();
+    }
 
-  return new Promise((resolve) => {
-    const audio = new Audio(
-      `data:audio/wav;base64,${base64Audio}`
-    );
+    return new Promise((resolve) => {
+      const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
 
-    audio.onended = () => {
-      resolve();
-    };
+      audio.onended = () => {
+        resolve();
+      };
 
-    audio.onerror = (error) => {
-      console.error("Erro ao reproduzir áudio:", error);
-      resolve();
-    };
+      audio.onerror = (error) => {
+        console.error("Erro ao reproduzir áudio:", error);
+        resolve();
+      };
 
-    audio.play().catch((error) => {
-      console.error("Erro ao iniciar áudio:", error);
-      resolve();
+      audio.play().catch((error) => {
+        console.error("Erro ao iniciar áudio:", error);
+        resolve();
+      });
     });
-  });
-};
+  };
 
   const stopListening = () => {
-  const mediaRecorder = mediaRecorderRef.current;
+    const mediaRecorder = mediaRecorderRef.current;
 
-  if (!mediaRecorder) {
-    return;
-  }
+    if (!mediaRecorder) {
+      return;
+    }
 
-  finishRecording(mediaRecorder);
-};
+    finishRecording(mediaRecorder);
+  };
 
   const captureImage = async (selectedMode = mode) => {
     const video = videoRef.current;
@@ -269,20 +369,14 @@ const playAudio = (base64Audio) => {
 
     const context = canvas.getContext("2d");
 
-    context.drawImage(
-      video,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
 
     const image = {
       data: dataUrl.split(",")[1],
       mimeType: "image/jpeg",
-};
+    };
 
     console.log("Imagem capturada.");
 
@@ -312,15 +406,15 @@ const playAudio = (base64Audio) => {
 
       console.log("Resposta do backend:", data);
 
-setAnalysisResult(data.result);
+      setAnalysisResult(data.result);
 
-if (data.audio) {
-  setSystemState(STATES.SPEAKING);
-  await playAudio(data.audio);
-  setSystemState(STATES.LISTENING);
-}
+      if (data.audio) {
+        setSystemState(STATES.SPEAKING);
+        await playAudio(data.audio);
+        setSystemState(STATES.LISTENING);
+      }
 
-return data;
+      return data;
     } catch (error) {
       console.error("Erro ao analisar imagem:", error);
       setSystemState(STATES.READY);
@@ -338,11 +432,13 @@ return data;
     if (!mode) {
       if (normalizedCommand.includes("ambiente")) {
         selectMode(MODES.CAMPUS);
+        playFeedbackSound("success");
         return;
       }
 
       if (normalizedCommand.includes("sala")) {
         selectMode(MODES.CLASSROOM);
+        playFeedbackSound("success");
         return;
       }
 
@@ -355,42 +451,34 @@ return data;
 
     if (normalizedCommand.includes("nova análise")) {
       setSystemState(STATES.READY);
+      playFeedbackSound("success");
       return;
     }
 
     if (normalizedCommand.includes("trocar para sala")) {
       setMode(MODES.CLASSROOM);
       setSystemState(STATES.READY);
+      playFeedbackSound("success");
       return;
     }
 
     if (normalizedCommand.includes("trocar para ambiente")) {
       setMode(MODES.CAMPUS);
       setSystemState(STATES.READY);
+      playFeedbackSound("success");
     }
   };
 
   return (
     <main className="app">
       <section className="camera-screen">
-        <video
-          ref={videoRef}
-          className="camera"
-          autoPlay
-          playsInline
-          muted
-        />
+        <video ref={videoRef} className="camera" autoPlay playsInline muted />
 
         {analysisResult && (
-  <div className="analysis-result">
-    {analysisResult}
-  </div>
-)}
+          <div className="analysis-result">{analysisResult}</div>
+        )}
 
-        <canvas
-          ref={canvasRef}
-          style={{ display: "none" }}
-        />
+        <canvas ref={canvasRef} style={{ display: "none" }} />
 
         {!mode && (
           <div className="mode-selection">
@@ -404,20 +492,16 @@ return data;
             <div className="mode-info">
               <div>
                 <strong>AMBIENTE</strong>
-                <span>
-                  Espaços, portas, placas e obstáculos
-                </span>
+                <span>Espaços, portas, placas e obstáculos</span>
               </div>
 
               <div>
                 <strong>SALA</strong>
-                <span>
-                  Quadros, exercícios, textos e conteúdos
-                </span>
+                <span>Quadros, exercícios, textos e conteúdos</span>
               </div>
             </div>
 
-            <div className="status">
+            <div className={`status status-${systemState.toLowerCase()}`}>
               <span className="status-dot" />
               <span>{systemState}</span>
             </div>
@@ -447,6 +531,6 @@ return data;
       </section>
     </main>
   );
-}
+  }
 
 export default App;
