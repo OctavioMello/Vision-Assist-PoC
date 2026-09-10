@@ -80,11 +80,16 @@ function App() {
 
           console.log("Transcrição:", data.text);
 
-          await processCommand(data.text);
-          stopProcessingFeedback();
-          startListening();
+          try {
+            await processCommand(data.text);
+            startListening();
+          } finally {
+            stopProcessingFeedback();
+          }
         } catch (error) {
           console.error("Erro ao enviar áudio:", error);
+          playFeedbackSound("error");
+          setSystemState(STATES.READY);
         }
       };
 
@@ -214,6 +219,11 @@ function App() {
         secondFrequency: 1318,
         gap: 0.06,
       },
+      analysisComplete: {
+        frequency: 784,
+        duration: 0.15,
+        volume: 0.06,
+      },
       error: {
         frequency: 220,
         duration: 0.2,
@@ -228,42 +238,35 @@ function App() {
       return;
     }
 
-oscillator.frequency.value = sound.frequency;
-gainNode.gain.value = sound.volume;
+    oscillator.frequency.value = sound.frequency;
+    gainNode.gain.value = sound.volume;
 
-oscillator.start();
-oscillator.stop(
-  audioContext.currentTime + sound.duration
-);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + sound.duration);
 
-if (sound.secondFrequency) {
-  const secondOscillator = audioContext.createOscillator();
-  const secondGainNode = audioContext.createGain();
+    if (sound.secondFrequency) {
+      const secondOscillator = audioContext.createOscillator();
+      const secondGainNode = audioContext.createGain();
 
-  secondOscillator.connect(secondGainNode);
-  secondGainNode.connect(audioContext.destination);
+      secondOscillator.connect(secondGainNode);
+      secondGainNode.connect(audioContext.destination);
 
-  secondOscillator.frequency.value = sound.secondFrequency;
-  secondGainNode.gain.value = sound.volume;
+      secondOscillator.frequency.value = sound.secondFrequency;
+      secondGainNode.gain.value = sound.volume;
 
-  const secondStart =
-    audioContext.currentTime +
-    sound.duration +
-    sound.gap;
+      const secondStart = audioContext.currentTime + sound.duration + sound.gap;
 
-  secondOscillator.start(secondStart);
-  secondOscillator.stop(
-    secondStart + sound.duration
-  );
+      secondOscillator.start(secondStart);
+      secondOscillator.stop(secondStart + sound.duration);
 
-  secondOscillator.onended = () => {
-    audioContext.close();
-  };
-} else {
-  oscillator.onended = () => {
-    audioContext.close();
-  };
-}
+      secondOscillator.onended = () => {
+        audioContext.close();
+      };
+    } else {
+      oscillator.onended = () => {
+        audioContext.close();
+      };
+    }
   };
 
   const processingIntervalRef = useRef(null);
@@ -408,6 +411,8 @@ if (sound.secondFrequency) {
 
       setAnalysisResult(data.result);
 
+      playFeedbackSound("analysisComplete");
+
       if (data.audio) {
         setSystemState(STATES.SPEAKING);
         await playAudio(data.audio);
@@ -417,6 +422,7 @@ if (sound.secondFrequency) {
       return data;
     } catch (error) {
       console.error("Erro ao analisar imagem:", error);
+      playFeedbackSound("error");
       setSystemState(STATES.READY);
     }
   };
@@ -531,6 +537,6 @@ if (sound.secondFrequency) {
       </section>
     </main>
   );
-  }
+}
 
 export default App;
