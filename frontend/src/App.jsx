@@ -437,6 +437,7 @@ function App() {
       playFeedbackSound("analysisComplete");
 
       if (data.audio) {
+        stopProcessingFeedback();
         setSystemState(STATES.SPEAKING);
         await playAudio(data.audio);
       }
@@ -503,6 +504,7 @@ function App() {
       console.log("Resposta da pergunta:", data);
 
       if (data.audio) {
+        stopProcessingFeedback();
         setSystemState(STATES.SPEAKING);
         await playAudio(data.audio);
       }
