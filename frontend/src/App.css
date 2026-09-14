@@ -1,9 +1,31 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap");
+
+:root {
+  --bg: #07070d;
+  --bg-panel: rgba(7, 7, 15, 0.82);
+  --accent-blue: #6a7bff;
+  --accent-violet: #9a6bff;
+  --text-primary: #f4f3f8;
+  --text-secondary: #9698ac;
+  --glow: 0 0 18px rgba(122, 118, 255, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  color: var(--text-primary);
+}
+
 .app {
   min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #050505;
+  background: var(--bg);
 }
 
 .mode-selection,
@@ -13,7 +35,7 @@
   min-height: 100dvh;
   position: relative;
   overflow: hidden;
-  background: #0b0b0b;
+  background: #0a0a13;
 }
 
 .mode-selection {
@@ -25,77 +47,81 @@
   flex-direction: column;
   justify-content: center;
 
-  padding: 32px;
+  padding: 40px 32px;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
 
-  background: rgba(5, 5, 5, 0.78);
-  backdrop-filter: blur(4px);
+  background: var(--bg-panel);
+  backdrop-filter: blur(6px);
 }
 
 .brand {
   text-align: center;
-  margin-bottom: 64px;
-}
-
-.brand-mark {
-  display: block;
-  font-size: 28px;
-  margin-bottom: 12px;
+  margin-bottom: 80px;
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 20px;
-  letter-spacing: 0.16em;
+  font-size: 30px;
   font-weight: 600;
-}
-
-.question {
-  margin: 0 0 48px;
-  text-align: center;
-  font-size: 20px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  background: linear-gradient(
+    135deg,
+    var(--text-primary) 35%,
+    var(--accent-blue) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 20px rgba(106, 123, 255, 0.25));
 }
 
 .mode-info {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 28px;
 }
 
 .mode-info div {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .mode-info strong {
   font-size: 15px;
-  letter-spacing: 0.12em;
+  font-weight: 500;
 }
 
 .mode-info span {
-  color: #999;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
   line-height: 1.5;
+  font-weight: 400;
 }
 
 .status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-size: 11.5px;
+  letter-spacing: 0.07em;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.65),
+    0 0 14px rgba(0, 0, 0, 0.4);
 }
 
-.mode-selection .status {
+.mode-selection-eye {
+  display: flex;
   justify-content: center;
   margin-top: 64px;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+.mode-selection-eye .eye {
+  width: 64px;
+  height: 40px;
 }
 
 .camera-screen {
@@ -114,12 +140,17 @@
   justify-content: space-between;
   align-items: center;
 
-  padding: 24px;
+  padding: max(22px, env(safe-area-inset-top)) 24px 22px;
 }
 
 .mode {
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.65),
+    0 0 14px rgba(0, 0, 0, 0.4);
 }
 
 .camera {
@@ -129,107 +160,219 @@
   display: block;
 }
 
-.voice-wave {
+/* ---------- Olho reativo ---------- */
+
+.eye-dock {
   position: absolute;
   left: 50%;
-  bottom: 90px;
+  bottom: max(34px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
-
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 40px;
+  z-index: 2;
 }
 
-.voice-wave span {
-  width: 3px;
-  height: 12px;
-  border-radius: 999px;
-  background: #fff;
-  animation: voice-wave 0.8s ease-in-out infinite alternate;
+.eye-dock .eye {
+  width: 112px;
+  height: 68px;
 }
 
-.voice-wave span:nth-child(2) {
-  animation-delay: 0.15s;
+.eye {
+  position: relative;
+  display: block;
 }
 
-.voice-wave span:nth-child(3) {
-  height: 28px;
-  animation-delay: 0.3s;
+.eye-visual {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.voice-wave span:nth-child(4) {
-  animation-delay: 0.45s;
+/* ---------- Estrutura ---------- */
+
+.eye-upper,
+.eye-lower {
+  transform-origin: center;
 }
 
-.voice-wave span:nth-child(5) {
-  animation-delay: 0.6s;
+.eye-inner-upper,
+.eye-inner-lower {
+  opacity: 0.38;
 }
 
-@keyframes voice-wave {
-  from {
-    transform: scaleY(0.6);
+.eye-core {
+  transform-origin: 80px 48px;
+}
+
+.eye-core-light {
+  fill: rgba(255, 255, 255, 0.38);
+  filter: blur(1px);
+}
+
+/* ---------- Movimento geral ---------- */
+
+.eye-motion {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+/* ---------- PRONTO ---------- */
+
+.eye--ready .eye-motion {
+  animation: eye-ready 4.5s ease-in-out infinite;
+}
+
+@keyframes eye-ready {
+  0%,
+  100% {
+    transform: scale(0.985);
   }
 
-  to {
-    transform: scaleY(1.4);
+  50% {
+    transform: scale(1);
   }
 }
 
+/* ---------- OUVINDO ---------- */
+
+.eye--listening .eye-motion {
+  animation: eye-listening 3s ease-in-out infinite;
+}
+
+@keyframes eye-listening {
+  0%,
+  100% {
+    transform: scale(0.96, 0.94);
+  }
+
+  50% {
+    transform: scale(1.035, 1.06);
+  }
+}
+
+.eye--listening .eye-core-group {
+  animation: listening-core 3s ease-in-out infinite;
+}
+
+@keyframes listening-core {
+  0%,
+  100% {
+    transform: scale(0.92, 0.95);
+  }
+
+  50% {
+    transform: scale(1.08, 1.06);
+  }
+}
+
+/* ---------- PROCESSANDO ---------- */
+
+.eye--processing .eye-motion {
+  animation: processing-eye 1.8s ease-in-out infinite;
+}
+
+@keyframes processing-eye {
+  0%,
+  100% {
+    transform: scale(0.98, 0.96);
+  }
+
+  50% {
+    transform: scale(1.025, 1.05);
+  }
+}
+
+.eye--processing .eye-core-group {
+  animation: processing-core 1.2s ease-in-out infinite;
+  transform-origin: 80px 48px;
+}
+
+@keyframes processing-core {
+  0% {
+    transform: translate(-1.5px, 0) scale(0.9, 1.05);
+  }
+
+  25% {
+    transform: translate(1px, -1px) scale(1.05, 0.94);
+  }
+
+  50% {
+    transform: translate(1.5px, 0.5px) scale(0.94, 1.07);
+  }
+
+  75% {
+    transform: translate(-1px, 1px) scale(1.04, 0.95);
+  }
+
+  100% {
+    transform: translate(-1.5px, 0) scale(0.9, 1.05);
+  }
+}
+
+/* ---------- FALANDO ---------- */
+
+.eye--speaking .eye-motion {
+  animation: speaking-eye 0.9s ease-in-out infinite;
+}
+
+@keyframes speaking-eye {
+  0%,
+  100% {
+    transform: scale(0.97, 0.95);
+  }
+
+  30% {
+    transform: scale(1.04, 1.07);
+  }
+
+  55% {
+    transform: scale(0.99, 1.01);
+  }
+
+  80% {
+    transform: scale(1.025, 1.05);
+  }
+}
+
+.eye--speaking .eye-core-group {
+  animation: speaking-core 0.9s ease-in-out infinite;
+}
+
+@keyframes speaking-core {
+  0%,
+  100% {
+    transform: scale(0.88, 0.92);
+    opacity: 0.78;
+  }
+
+  30% {
+    transform: scale(1.1, 1.08);
+    opacity: 1;
+  }
+
+  55% {
+    transform: scale(0.96, 1);
+    opacity: 0.88;
+  }
+
+  80% {
+    transform: scale(1.06, 1.05);
+    opacity: 0.97;
+  }
+}
+
+/* ---------- Redução de movimento ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-motion,
+  .eye-core-group {
+    animation: none !important;
+  }
+}
 @media (min-width: 600px) {
   .mode-selection,
   .camera-screen {
     min-height: 90vh;
     max-height: 900px;
-    border-radius: 24px;
-  }
-}
-
-.status-ouvindo .status-dot {
-  animation: status-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-
-  50% {
-    transform: scale(1.5);
-    opacity: 1;
-  }
-}
-
-.status-processando .status-dot {
-  animation: status-processing 0.9s ease-in-out infinite alternate;
-}
-
-@keyframes status-processing {
-  from {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
-.status-falando .status-dot {
-  animation: status-speaking 0.6s ease-in-out infinite alternate;
-}
-
-@keyframes status-speaking {
-  from {
-    transform: scale(0.85);
-    opacity: 0.5;
-  }
-
-  to {
-    transform: scale(1.25);
-    opacity: 1;
+    border-radius: 28px;
   }
 }

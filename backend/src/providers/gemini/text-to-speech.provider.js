@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 const createWav = (pcmData) => {
@@ -36,25 +36,25 @@ const createWav = (pcmData) => {
 };
 
 export const synthesizeSpeech = async (text) => {
+  console.log("🗣️ TTS caracteres:", text.length);
+  console.log("🗣️ TTS palavras:", text.trim().split(/\s+/).length);
+  
   const interaction = await ai.interactions.create({
     model: "gemini-3.1-flash-tts-preview",
     input: text,
     response_format: {
-      type: "audio"
+      type: "audio",
     },
     generation_config: {
       speech_config: [
         {
-          voice: "Kore"
-        }
-      ]
-    }
+          voice: "Kore",
+        },
+      ],
+    },
   });
 
-  const pcmData = Buffer.from(
-    interaction.output_audio.data,
-    "base64"
-  );
+  const pcmData = Buffer.from(interaction.output_audio.data, "base64");
 
   const wavData = createWav(pcmData);
 

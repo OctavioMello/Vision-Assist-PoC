@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { STATES, MODES } from "./appState";
+import Eye from "./Eye";
+
+const API_URL = "https://vision-assist-ai-6t15.onrender.com";
 
 function App() {
   const [systemState, setSystemState] = useState(STATES.LISTENING);
@@ -25,6 +28,7 @@ function App() {
   const animationFrameRef = useRef(null);
   const analysisImageRef = useRef(null);
   const analysisResultRef = useRef("");
+  const greetingStartedRef = useRef(false);
 
   useEffect(() => {
     analysisResultRef.current = analysisResult;
@@ -34,6 +38,8 @@ function App() {
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
       return;
     }
+
+    console.time("⏱️ STT");
 
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -69,7 +75,7 @@ function App() {
           console.log("Enviando áudio para o backend...");
 
           const response = await fetch(
-            "http://localhost:3000/speech/transcribe",
+            `${API_URL}/speech/transcribe`,
             {
               method: "POST",
               headers: {
@@ -81,17 +87,18 @@ function App() {
               }),
             },
           );
+
           console.log("Resposta HTTP recebida:", response.status);
 
           if (!response.ok) {
             const errorData = await response.json();
-
             throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
           }
 
           const data = await response.json();
 
           console.log("Transcrição:", data.text);
+          console.timeEnd("⏱️ STT");
 
           try {
             await processCommand(data.text);
@@ -101,6 +108,7 @@ function App() {
           }
         } catch (error) {
           console.error("Erro ao enviar áudio:", error);
+          console.timeEnd("⏱️ STT");
 
           if (error.message === "Speech transcription quota exceeded") {
             console.error("Quota de transcrição excedida.");
@@ -375,6 +383,8 @@ function App() {
   };
 
   const captureImage = async (selectedMode = modeRef.current) => {
+    console.time("⏱️ ANALYZE");
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
@@ -411,7 +421,7 @@ function App() {
     try {
       console.log("Enviando imagem para o backend...");
 
-      const response = await fetch("http://localhost:3000/analyze", {
+      const response = await fetch(`${API_URL}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -432,6 +442,8 @@ function App() {
 
       console.log("Resposta do backend:", data);
 
+      console.timeEnd("⏱️ ANALYZE");
+
       setAnalysisResult(data.result);
 
       playFeedbackSound("analysisComplete");
@@ -449,6 +461,7 @@ function App() {
       console.error("Erro ao analisar imagem:", error);
       playFeedbackSound("error");
       setSystemState(STATES.READY);
+      console.timeEnd("⏱️ ANALYZE");
     }
   };
 
@@ -463,6 +476,8 @@ function App() {
   };
 
   const askQuestion = async (question) => {
+    console.time("⏱️ ASK");
+
     const image = analysisImageRef.current;
 
     if (!image) {
@@ -478,7 +493,7 @@ function App() {
       console.log("Enviando pergunta para o backend...");
       console.log("Pergunta:", question);
 
-      const response = await fetch("http://localhost:3000/ask", {
+      const response = await fetch(`${API_URL}/ask`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -495,13 +510,14 @@ function App() {
 
       if (!response.ok) {
         const errorData = await response.json();
-
         throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
       }
 
       const data = await response.json();
 
       console.log("Resposta da pergunta:", data);
+
+      console.timeEnd("⏱️ ASK");
 
       if (data.audio) {
         stopProcessingFeedback();
@@ -516,23 +532,29 @@ function App() {
       console.error("Erro ao fazer pergunta:", error);
       playFeedbackSound("error");
       setSystemState(STATES.READY);
+      console.timeEnd("⏱️ ASK");
     }
   };
 
   const processCommand = async (command) => {
-    const normalizedCommand = command.toLowerCase().trim();
-
-    console.log("Comando recebido:", normalizedCommand);
+    const normalizedCommand = command
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
     if (!modeRef.current) {
-      if (normalizedCommand.includes("ambiente")) {
+      if (
+        normalizedCommand === "ambiente" ||
+        normalizedCommand === "modo ambiente"
+      ) {
         console.log("Executando: ambiente");
         selectMode(MODES.CAMPUS);
         playFeedbackSound("success");
         return;
       }
 
-      if (normalizedCommand.includes("sala")) {
+      if (normalizedCommand === "sala" || normalizedCommand === "modo sala") {
         console.log("Executando: sala");
         selectMode(MODES.CLASSROOM);
         playFeedbackSound("success");
@@ -542,26 +564,50 @@ function App() {
       return;
     }
 
-    if (normalizedCommand.includes("analisar")) {
-      console.log("Executando: analisar");
-      return captureImage();
+    if (
+      normalizedCommand === "ambiente" ||
+      normalizedCommand === "modo ambiente" ||
+      normalizedCommand === "trocar para ambiente"
+    ) {
+      console.log("Executando: ambiente");
+      selectMode(MODES.CAMPUS);
+      playFeedbackSound("success");
+      return;
     }
 
-    if (normalizedCommand.includes("nova análise")) {
-      console.log("Executando: nova análise");
-      return captureImage();
-    }
-
-    if (normalizedCommand.includes("trocar para sala")) {
+    if (
+      normalizedCommand === "sala" ||
+      normalizedCommand === "modo sala" ||
+      normalizedCommand === "trocar para sala"
+    ) {
+      console.log("Executando: sala");
       selectMode(MODES.CLASSROOM);
       playFeedbackSound("success");
       return;
     }
 
-    if (normalizedCommand.includes("trocar para ambiente")) {
-      selectMode(MODES.CAMPUS);
-      playFeedbackSound("success");
-      return;
+    if (
+      normalizedCommand === "analisar" ||
+      normalizedCommand === "nova analise"
+    ) {
+      console.log("Executando: analisar");
+      return captureImage();
+    }
+
+    if (
+      normalizedCommand === "resumo" ||
+      normalizedCommand === "fazer resumo"
+    ) {
+      console.log("Executando: resumo");
+      return askQuestion("faça um resumo do material");
+    }
+
+    if (
+      normalizedCommand === "contextualizacao" ||
+      normalizedCommand === "fazer contextualizacao"
+    ) {
+      console.log("Executando: contextualização");
+      return askQuestion("faça uma contextualização do conteúdo");
     }
 
     if (analysisImageRef.current) {
@@ -570,64 +616,90 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const audio = new Audio("/audio/welcome.wav");
+    audio.preload = "auto";
+
+    let greetingPlayed = false;
+
+    const playGreeting = async () => {
+      if (greetingPlayed) return;
+
+      try {
+        await audio.play();
+        greetingPlayed = true;
+        cleanup();
+      } catch (error) {
+        console.log("Autoplay bloqueado. Aguardando interação do usuário.");
+      }
+    };
+
+    const handleFirstInteraction = () => {
+      playGreeting();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+
+    window.addEventListener("pointerdown", handleFirstInteraction);
+    window.addEventListener("keydown", handleFirstInteraction);
+
+    playGreeting();
+
+    return () => {
+      cleanup();
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
+
   return (
     <main className="app">
       <section className="camera-screen">
         <video ref={videoRef} className="camera" autoPlay playsInline muted />
-
-        {analysisResult && (
-          <div className="analysis-result">{analysisResult}</div>
-        )}
 
         <canvas ref={canvasRef} style={{ display: "none" }} />
 
         {!mode && (
           <div className="mode-selection">
             <div className="brand">
-              <span className="brand-mark">◉</span>
-              <h1>VISION ASSIST</h1>
+              <h1>Vision Assist AI</h1>
             </div>
-
-            <p className="question">Como posso ajudar?</p>
 
             <div className="mode-info">
               <div>
-                <strong>AMBIENTE</strong>
+                <strong>Ambiente</strong>
                 <span>Espaços, portas, placas e obstáculos</span>
               </div>
 
               <div>
-                <strong>SALA</strong>
+                <strong>Sala</strong>
                 <span>Quadros, exercícios, textos e conteúdos</span>
               </div>
             </div>
 
-            <div className={`status status-${systemState.toLowerCase()}`}>
-              <span className="status-dot" />
-              <span>{systemState}</span>
+            <div className="mode-selection-eye">
+              <Eye state={systemState} />
             </div>
           </div>
         )}
 
         {mode && (
-          <header className="top-bar">
-            <div className="status">
-              <span className="status-dot" />
-              <span>{systemState}</span>
+          <>
+            <header className="top-bar">
+              <span className={`status status-${systemState.toLowerCase()}`}>
+                {systemState}
+              </span>
+
+              <span className="mode">{mode}</span>
+            </header>
+
+            <div className="eye-dock">
+              <Eye state={systemState} />
             </div>
-
-            <span className="mode">{mode}</span>
-          </header>
-        )}
-
-        {systemState === STATES.SPEAKING && (
-          <div className="voice-wave">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
+          </>
         )}
       </section>
     </main>
