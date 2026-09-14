@@ -200,39 +200,6 @@ Síntese de voz
 
 ---
 
-## Estrutura do projeto
-
-vision-assist-poc/
-│
-├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── providers/
-│   │   │   └── gemini/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── server.js
-│   │
-│   └── package.json
-│
-├── frontend/
-│   ├── public/
-│   │   └── audio/
-│   │       └── welcome.wav
-│   │
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── Eye.jsx
-│   │   └── appState.js
-│   │
-│   └── package.json
-│
-├── package.json
-└── package-lock.json
-
----
-
 ## Como executar localmente
 
 ### Pré-requisitos
