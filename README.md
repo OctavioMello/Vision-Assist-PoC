@@ -203,6 +203,7 @@ Síntese de voz
 ## Estrutura do projeto
 
 vision-assist-poc/
+│
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/
@@ -211,17 +212,20 @@ vision-assist-poc/
 │   │   ├── routes/
 │   │   ├── services/
 │   │   └── server.js
+│   │
 │   └── package.json
 │
 ├── frontend/
 │   ├── public/
 │   │   └── audio/
 │   │       └── welcome.wav
+│   │
 │   ├── src/
 │   │   ├── App.jsx
 │   │   ├── App.css
 │   │   ├── Eye.jsx
 │   │   └── appState.js
+│   │
 │   └── package.json
 │
 ├── package.json
