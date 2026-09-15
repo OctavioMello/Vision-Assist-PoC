@@ -74,19 +74,16 @@ function App() {
         try {
           console.log("Enviando áudio para o backend...");
 
-          const response = await fetch(
-            `${API_URL}/speech/transcribe`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                audio: base64Audio,
-                mimeType: audioBlob.type,
-              }),
+          const response = await fetch(`${API_URL}/speech/transcribe`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          );
+            body: JSON.stringify({
+              audio: base64Audio,
+              mimeType: audioBlob.type,
+            }),
+          });
 
           console.log("Resposta HTTP recebida:", response.status);
 
@@ -109,6 +106,9 @@ function App() {
         } catch (error) {
           console.error("Erro ao enviar áudio:", error);
           console.timeEnd("⏱️ STT");
+          stopProcessingFeedback();
+          playFeedbackSound("error");
+          setSystemState(STATES.READY);
 
           if (error.message === "Speech transcription quota exceeded") {
             console.error("Quota de transcrição excedida.");
@@ -142,6 +142,8 @@ function App() {
       });
 
       const mediaRecorder = new MediaRecorder(stream);
+
+      console.log("MIME TYPE DO RECORDER:", mediaRecorder.mimeType);
 
       audioChunksRef.current = [];
 
@@ -353,25 +355,23 @@ function App() {
       return Promise.resolve();
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
 
-      audio.onended = () => {
-        resolve();
-      };
+      audio.onended = () => resolve();
 
       audio.onerror = (error) => {
         console.error("Erro ao reproduzir áudio:", error);
-        resolve();
+        reject(error);
       };
 
       audio.play().catch((error) => {
         console.error("Erro ao iniciar áudio:", error);
-        resolve();
+        reject(error);
       });
     });
   };
-
+  
   const stopListening = () => {
     const mediaRecorder = mediaRecorderRef.current;
 
