@@ -371,7 +371,23 @@ function App() {
       });
     });
   };
-  
+
+  const unlockAudio = async () => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+
+      if (audioContextRef.current.state === "suspended") {
+        await audioContextRef.current.resume();
+      }
+
+      console.log("🔊 Áudio desbloqueado:", audioContextRef.current.state);
+    } catch (error) {
+      console.error("Erro ao desbloquear áudio:", error);
+    }
+  };
+
   const stopListening = () => {
     const mediaRecorder = mediaRecorderRef.current;
 
@@ -635,6 +651,7 @@ function App() {
     };
 
     const handleFirstInteraction = () => {
+      unlockAudio();
       playGreeting();
     };
 
