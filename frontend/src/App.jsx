@@ -29,6 +29,7 @@ function App() {
   const analysisImageRef = useRef(null);
   const analysisResultRef = useRef("");
   const greetingStartedRef = useRef(false);
+  const playbackAudioContextRef = useRef(null);
 
   useEffect(() => {
     analysisResultRef.current = analysisResult;
@@ -356,33 +357,63 @@ function App() {
     }
 
     return new Promise((resolve, reject) => {
-      const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+      const play = async () => {
+        try {
+          if (!playbackAudioContextRef.current) {
+            playbackAudioContextRef.current = new AudioContext();
+          }
 
-      audio.onended = () => resolve();
+          const audioContext = playbackAudioContextRef.current;
 
-      audio.onerror = (error) => {
-        console.error("Erro ao reproduzir áudio:", error);
-        reject(error);
+          if (audioContext.state === "suspended") {
+            await audioContext.resume();
+          }
+
+          const binaryString = atob(base64Audio);
+          const bytes = new Uint8Array(binaryString.length);
+
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+
+          const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
+
+          const source = audioContext.createBufferSource();
+
+          source.buffer = audioBuffer;
+          source.connect(audioContext.destination);
+
+          source.onended = () => {
+            resolve();
+          };
+
+          source.start(0);
+
+          console.log("🔊 TTS reproduzindo pelo AudioContext");
+        } catch (error) {
+          console.error("Erro ao reproduzir TTS:", error);
+          reject(error);
+        }
       };
 
-      audio.play().catch((error) => {
-        console.error("Erro ao iniciar áudio:", error);
-        reject(error);
-      });
+      play();
     });
   };
 
-  const unlockAudio = async () => {
+  const unlockAudio = () => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
+      if (!playbackAudioContextRef.current) {
+        playbackAudioContextRef.current = new AudioContext();
       }
 
-      if (audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
+      if (playbackAudioContextRef.current.state === "suspended") {
+        playbackAudioContextRef.current.resume();
       }
 
-      console.log("🔊 Áudio desbloqueado:", audioContextRef.current.state);
+      console.log(
+        "🔊 Playback AudioContext:",
+        playbackAudioContextRef.current.state,
+      );
     } catch (error) {
       console.error("Erro ao desbloquear áudio:", error);
     }
