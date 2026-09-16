@@ -100,6 +100,13 @@ function App() {
           console.timeEnd("⏱️ STT");
 
           try {
+            if (!data.text) {
+              console.log("Nenhuma fala reconhecida. Voltando a ouvir...");
+              setSystemState(STATES.READY);
+              startListening();
+              return;
+            }
+
             await processCommand(data.text);
             startListening();
           } finally {
