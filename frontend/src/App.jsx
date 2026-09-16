@@ -30,6 +30,7 @@ function App() {
   const analysisResultRef = useRef("");
   const greetingStartedRef = useRef(false);
   const playbackAudioContextRef = useRef(null);
+  const playbackAudioRef = useRef(null);
 
   useEffect(() => {
     analysisResultRef.current = analysisResult;
@@ -343,7 +344,6 @@ function App() {
     };
 
     startCamera();
-    startListening();
 
     return () => {
       stream?.getTracks().forEach((track) => track.stop());
@@ -357,63 +357,62 @@ function App() {
     }
 
     return new Promise((resolve, reject) => {
-      const play = async () => {
-        try {
-          if (!playbackAudioContextRef.current) {
-            playbackAudioContextRef.current = new AudioContext();
-          }
+      try {
+        if (!playbackAudioRef.current) {
+          playbackAudioRef.current = new Audio();
+          playbackAudioRef.current.playsInline = true;
+        }
 
-          const audioContext = playbackAudioContextRef.current;
+        const audio = playbackAudioRef.current;
 
-          if (audioContext.state === "suspended") {
-            await audioContext.resume();
-          }
+        audio.src = `data:audio/wav;base64,${base64Audio}`;
 
-          const binaryString = atob(base64Audio);
-          const bytes = new Uint8Array(binaryString.length);
+        audio.onended = () => {
+          console.log("🔊 TTS finalizado");
+          resolve();
+        };
 
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
-
-          const source = audioContext.createBufferSource();
-
-          source.buffer = audioBuffer;
-          source.connect(audioContext.destination);
-
-          source.onended = () => {
-            resolve();
-          };
-
-          source.start(0);
-
-          console.log("🔊 TTS reproduzindo pelo AudioContext");
-        } catch (error) {
+        audio.onerror = (error) => {
           console.error("Erro ao reproduzir TTS:", error);
           reject(error);
-        }
-      };
+        };
 
-      play();
+        audio
+          .play()
+          .then(() => {
+            console.log("🔊 TTS reproduzindo");
+          })
+          .catch((error) => {
+            console.error("Erro ao iniciar TTS:", error);
+            reject(error);
+          });
+      } catch (error) {
+        console.error("Erro ao configurar TTS:", error);
+        reject(error);
+      }
     });
   };
 
-  const unlockAudio = () => {
+  const unlockAudio = async () => {
     try {
-      if (!playbackAudioContextRef.current) {
-        playbackAudioContextRef.current = new AudioContext();
+      if (!playbackAudioRef.current) {
+        playbackAudioRef.current = new Audio();
+        playbackAudioRef.current.playsInline = true;
       }
 
-      if (playbackAudioContextRef.current.state === "suspended") {
-        playbackAudioContextRef.current.resume();
-      }
+      const audio = playbackAudioRef.current;
 
-      console.log(
-        "🔊 Playback AudioContext:",
-        playbackAudioContextRef.current.state,
-      );
+      audio.src =
+        "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAAAAAAAEAAAAAAAAAAAAAAAAAAAAA";
+
+      await audio.play();
+
+      audio.pause();
+      audio.currentTime = 0;
+      audio.removeAttribute("src");
+      audio.load();
+
+      console.log("🔊 Áudio HTML desbloqueado");
     } catch (error) {
       console.error("Erro ao desbloquear áudio:", error);
     }
@@ -665,15 +664,27 @@ function App() {
 
   useEffect(() => {
     const audio = new Audio("/audio/welcome.wav");
+
     audio.preload = "auto";
 
     let greetingPlayed = false;
+
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+
+    audio.onended = () => {
+      console.log("🔊 Boas-vindas finalizadas. Iniciando microfone...");
+      startListening();
+    };
 
     const playGreeting = async () => {
       if (greetingPlayed) return;
 
       try {
         await audio.play();
+
         greetingPlayed = true;
         cleanup();
       } catch (error) {
@@ -684,11 +695,6 @@ function App() {
     const handleFirstInteraction = () => {
       unlockAudio();
       playGreeting();
-    };
-
-    const cleanup = () => {
-      window.removeEventListener("pointerdown", handleFirstInteraction);
-      window.removeEventListener("keydown", handleFirstInteraction);
     };
 
     window.addEventListener("pointerdown", handleFirstInteraction);
