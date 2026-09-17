@@ -670,6 +670,13 @@ function App() {
   };
 
   useEffect(() => {
+    window.demoCommand = processCommand;
+
+    return () => {
+      delete window.demoCommand;
+    };
+  }, []);
+  useEffect(() => {
     const audio = new Audio("/audio/welcome.wav");
 
     audio.preload = "auto";
